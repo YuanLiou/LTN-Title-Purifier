@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "LTN 標題淨化器",
+  "version": "1.0",
+  "description": "使用本地 LLM 淨化自由時報新聞標題",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:1234/",
+    "https://news.ltn.com.tw/"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://news.ltn.com.tw/list/breakingnews*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_popup": "popup.html"
+  }
+}
