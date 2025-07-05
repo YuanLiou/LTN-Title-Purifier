@@ -1,26 +1,27 @@
 const processHeadline = async (headline) => {
-  // Mark the headline as processed to avoid reprocessing
-  if (headline.dataset.processed) {
-    return;
-  }
-  headline.dataset.processed = 'true';
-
   const originalTitle = headline.textContent.trim();
   if (!originalTitle) {
     return;
   }
 
-  console.log(`[LTN Purify] Processing: ${originalTitle}`);
+  // Check if we've already processed this headline (our own processing)
+  // But only skip if the content has actually been rewritten
+  if (headline.dataset.ltnPurified && headline.dataset.originalTitle === originalTitle) {
+    return;
+  }
+  
+  // Mark the headline as processed by our extension
+  headline.dataset.ltnPurified = 'true';
+  headline.dataset.originalTitle = originalTitle;
 
   try {
     const response = await chrome.runtime.sendMessage({ title: originalTitle });
     if (response && response.newTitle) {
       headline.textContent = response.newTitle;
-      console.log(`[LTN Purify] Rewritten to: ${response.newTitle}`);
     }
   } catch (error) {
     if (error.message.includes('Extension context invalidated')) {
-        console.log('[LTN Purify] Extension context invalidated. No action taken.');
+        // Extension context invalidated, no action needed
     } else {
         console.error('[LTN Purify] Error communicating with background script:', error);
     }
@@ -29,33 +30,59 @@ const processHeadline = async (headline) => {
 
 const startObserver = (targetNode) => {
   const processAllHeadlines = () => {
-    targetNode.querySelectorAll('h3:not([data-processed])').forEach(processHeadline);
+    const headlines = targetNode.querySelectorAll('li[data-page] h3:not([data-ltn-purified])');
+    headlines.forEach(processHeadline);
+    
+    // 如果沒有找到，嘗試更寬鬆的選擇器
+    if (headlines.length === 0) {
+      const allH3s = targetNode.querySelectorAll('h3:not([data-ltn-purified])');
+      allH3s.forEach(processHeadline);
+    }
   };
 
   // Process initial headlines
   processAllHeadlines();
 
   const observer = new MutationObserver((mutations) => {
-    // Re-run the query on any change. This is robust.
-    processAllHeadlines();
+    // 檢查是否有新增的 li[data-page] 元素
+    let hasNewContent = false;
+    let newHeadlines = [];
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // 檢查是否為新的 li[data-page] 元素
+          if (node.matches('li[data-page]')) {
+            hasNewContent = true;
+            const h3 = node.querySelector('h3');
+            if (h3) newHeadlines.push(h3);
+          } else if (node.querySelector('li[data-page]')) {
+            hasNewContent = true;
+            const headlines = node.querySelectorAll('li[data-page] h3');
+            newHeadlines.push(...headlines);
+          }
+        }
+      });
+    });
+    
+    if (hasNewContent) {
+      // 直接處理新找到的標題
+      newHeadlines.forEach(processHeadline);
+    }
   });
 
   observer.observe(targetNode, {
     childList: true,
     subtree: true,
   });
-
-  console.log('[LTN Purify] Observer started on:', targetNode);
 };
 
-// The `ul.list` element that contains the news items
-const listSelector = 'ul.list';
+const listContainerSelector = 'div.whitecon.boxTitle[data-desc="新聞列表"]';
 
-// Wait for the target list to appear in the DOM
 const interval = setInterval(() => {
-  const listNode = document.querySelector(listSelector);
-  if (listNode) {
+  const listContainerNode = document.querySelector(listContainerSelector);
+  if (listContainerNode) {
     clearInterval(interval);
-    startObserver(listNode);
+    startObserver(listContainerNode);
   }
 }, 500);
