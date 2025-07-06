@@ -50,7 +50,7 @@ function main() {
       return; // 如果標題是空的或只包含空白字元，就跳過。
     }
 
-    // 檢查這個標題是否已經被我們處理過了，避免重複發送請求。
+    // 檢查這個標題是否已經被我們處理過了，避免重複發送 Request 
     // 就像在處理過的項目上蓋一個「已處理」的章。
     if (headline.dataset.ltnPurified && headline.dataset.originalTitle === originalTitle) {
       return;
@@ -171,7 +171,7 @@ function main() {
       link.dataset.ltnPurified = 'true';
       link.dataset.originalTitle = originalTitle;
 
-      // 發送請求改寫標題
+      // 發送 Request 改寫標題
       chrome.runtime.sendMessage({ title: originalTitle })
         .then(response => {
           if (response && response.newTitle && link.parentNode) {
@@ -221,7 +221,7 @@ function main() {
       link.dataset.ltnPurified = 'true';
       link.dataset.originalTitle = originalTitle;
 
-      // 發送請求改寫標題
+      // 發送 Request 改寫標題
       chrome.runtime.sendMessage({ title: originalTitle })
         .then(response => {
           if (response && response.newTitle && link.parentNode) {

@@ -3,7 +3,7 @@
  * @description
  *  這是 Chrome 擴充套件的背景 Script
  *  它在背景持續運行，主要負責兩件大事：
- *  1. 與後端語言模型（LLM）API 溝通，發送請求並接收改寫後的標題。
+ *  1. 與後端語言模型（LLM）API 溝通，發送 Request 並接收改寫後的標題。
  *  2. 管理整個擴充套件的狀態，例如「API 目前是否可用」。
  *  它也像一個總機，負責接收來自其他部分（如 content.js 和 popup.js）的訊息，並做出回應。
  */
@@ -14,7 +14,7 @@
 
 // API 狀態檢查的超時時間 (單位：毫秒)。沒回應就算失敗。
 const API_STATUS_TIMEOUT = 5000;
-// API 標題改寫請求的超時時間 (單位：毫秒)。沒回應就算失敗，因為 LLM 可能需要多一點時間思考。
+// API 標題改寫 Request 的超時時間 (單位：毫秒)。沒回應就算失敗，因為 LLM 可能需要多一點時間思考。
 const API_REWRITE_TIMEOUT = 15000;
 // 後端 API 的網址。
 // 使用者可自訂的 API port（預設 1234）
@@ -43,9 +43,9 @@ const SYSTEM_PROMPT = '你是一個協助改寫新聞標題的助理。你的目
 // =============================================
 
 /**
- * 一個帶有超時功能的 fetch 請求。
+ * 一個帶有超時功能的 fetch Request 。
  * 如果在指定時間內沒有回來（timeout），我們就直接不等了，當作任務失敗（abort）。
- * @param {string} url - 要請求的網址。
+ * @param {string} url - 要 Request 的網址。
  * @param {object} options - fetch 的設定，跟原本的 fetch 一樣。
  * @param {number} timeout - 超時時間（毫秒）。
  * @returns {Promise<Response>} - 一個 fetch 的 Promise 物件。
@@ -56,7 +56,7 @@ function fetchWithTimeout(url, options, timeout) {
 
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  // .finally() 確保不論請求成功或失敗，最後都會把鬧鐘關掉（clearTimeout）。
+  // .finally() 確保不論 Request 成功或失敗，最後都會把鬧鐘關掉（clearTimeout）。
   return fetch(url, options).finally(() => {
     clearTimeout(timeoutId);
   });
@@ -64,7 +64,7 @@ function fetchWithTimeout(url, options, timeout) {
 
 /**
  * 檢查後端 API 是否活著。
- * 它會發送一個非常小的「ping」請求，如果成功收到回應，就代表 API 沒問題。
+ * 它會發送一個非常小的「ping」Request ，如果成功收到回應，就代表 API 沒問題。
  * @param {function(boolean): void} [callback] - 一個回呼函式。檢查完成後，會呼叫它並傳入結果（true 或 false）。
  */
 function checkApiStatus(callback) {
@@ -76,13 +76,13 @@ function checkApiStatus(callback) {
 
   fetchWithTimeout(API_ENDPOINT, options, API_STATUS_TIMEOUT)
     .then(response => {
-      // response.ok 代表 HTTP 狀態碼是 200-299，表示請求成功。
+      // response.ok 代表 HTTP 狀態碼是 200-299，表示 Request 成功。
       const isAvailable = response.ok;
       chrome.storage.local.set({ apiAvailable: isAvailable });
       if (callback) callback(isAvailable);
     })
     .catch(error => {
-      // 如果請求失敗（例如網路不通、超時），就會進到這裡。
+      // 如果 Request 失敗（例如網路不通、超時），就會進到這裡。
       if (error.name === 'AbortError') {
         console.error('API 狀態檢查超時（超過5秒）。');
       }
@@ -138,7 +138,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(response => {
         if (!response.ok) {
           // 如果 API 回傳了錯誤（例如 500 Server Error），我們就主動拋出一個錯誤，讓 .catch 去接。
-          throw new Error(`API 請求失敗，狀態碼: ${response.status}`);
+          throw new Error(`API Request 失敗，狀態碼: ${response.status}`);
         }
         return response.json(); // 解析回傳的 JSON 資料。
       })
@@ -153,10 +153,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       })
       .catch(error => {
-        // 統一處理所有請求過程中發生的錯誤（網路、超時、伺服器錯誤等）。
+        // 統一處理所有 Request 過程中發生的錯誤（網路、超時、伺服器錯誤等）。
         if (error.name === 'AbortError') {
-          console.error('API 標題改寫請求超時（超過15秒）。');
-          sendResponse({ error: "請求超時，後端 API 可能正忙碌中。" });
+          console.error('API 標題改寫 Request 超時（超過15秒）。');
+          sendResponse({ error: "Request 超時，後端 API 可能正忙碌中。" });
         } else {
           console.error('呼叫 LLM API 時發生錯誤:', error);
           sendResponse({ error: "無法連線至後端 API。" });
