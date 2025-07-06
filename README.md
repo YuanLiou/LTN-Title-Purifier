@@ -3,6 +3,10 @@ LTN 新聞標題重寫器 擴充套件
 
 這是一個 Chrome 擴充套件，利用本地端的語言模型，調整自由時報過於聳動的新聞標題，或是釣魚標題
 
+現在只支援以下頁面:
+
+即時、熱門、政治、社會、生活、地方、搜奇
+
 | before | after    |
 | :---:   | :---: |
 |<img alt="Image" src="https://github.com/user-attachments/assets/2dbde8b8-1081-4dd6-9a66-69407b07fdb4" />|<img alt="Image" src="https://github.com/user-attachments/assets/4c725c54-4475-4537-81b3-ddfb5314e669" />|
