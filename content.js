@@ -141,25 +141,6 @@ function main() {
 
         // 初始處理一次
         processMarqueeAnchors(marqueeNode);
-
-        // 監控後續可能的節點變化（雖然說不會 lazy load，但保險起見）
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                if (node.matches('li')) {
-                  const a = node.querySelector('a');
-                  if (a) processHeadline(a);
-                } else {
-                  const innerAnchors = node.querySelectorAll('li a');
-                  innerAnchors.forEach(processHeadline);
-                }
-              }
-            });
-          });
-        });
-
-        observer.observe(marqueeNode, { childList: true, subtree: true });
       }
     }, 500);
   };
