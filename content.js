@@ -123,6 +123,50 @@ function main() {
     });
   };
 
+  // -----------------------------
+  // 處理「快訊」區塊 (marquee)
+  // -----------------------------
+  const monitorMarquee = () => {
+    // 專門處理 marquee 內的 a 標籤
+    const processMarqueeAnchors = (root) => {
+      const anchors = root.querySelectorAll('li a:not([data-ltn-purified])');
+      anchors.forEach(processHeadline);
+    };
+
+    // marquee 是透過 AJAX 動態插入的，先用 polling 等待它出現
+    const marqueeInterval = setInterval(() => {
+      const marqueeNode = document.getElementById('marquee');
+      if (marqueeNode) {
+        clearInterval(marqueeInterval);
+
+        // 初始處理一次
+        processMarqueeAnchors(marqueeNode);
+
+        // 監控後續可能的節點變化（雖然官方說不會 lazy load，但保險起見）
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.matches('li')) {
+                  const a = node.querySelector('a');
+                  if (a) processHeadline(a);
+                } else {
+                  const innerAnchors = node.querySelectorAll('li a');
+                  innerAnchors.forEach(processHeadline);
+                }
+              }
+            });
+          });
+        });
+
+        observer.observe(marqueeNode, { childList: true, subtree: true });
+      }
+    }, 500);
+  };
+
+  // 立即啟動 marquee 監控
+  monitorMarquee();
+
   // 因為新聞列表可能是由 JavaScript 動態載入的，所以我們不能假設它一開始就存在。
   // 這裡我們使用一個計時器，每半秒檢查一次，直到找到新聞列表的容器為止。
   const listContainerSelector = 'div.whitecon.boxTitle[data-desc="新聞列表"]';
