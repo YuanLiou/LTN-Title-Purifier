@@ -74,7 +74,14 @@ function main() {
 
   const startObserver = (targetNode) => {
     const processAllHeadlines = () => {
-      // 先處理頁面上一開始就存在的所有標題。
+      // 處理大圖輪播區的標題
+      const carouselArticle = document.querySelector('article.boxTitle[data-desc="輪播區"]');
+      if (carouselArticle) {
+        const carouselH3s = carouselArticle.querySelectorAll('h3:not([data-ltn-purified])');
+        carouselH3s.forEach(processHeadline);
+      }
+      
+      // 處理一般新聞列表的標題
       const headlines = targetNode.querySelectorAll('li[data-page] h3:not([data-ltn-purified])');
       headlines.forEach(processHeadline);
       
