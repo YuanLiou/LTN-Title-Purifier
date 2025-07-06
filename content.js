@@ -44,6 +44,37 @@ function main() {
     return !str || !str.trim() || /^\s*$/.test(str);
   };
 
+  // -----------------------------
+  // 方案 1+2：標題排程與節流 (Queue + Interval)
+  // -----------------------------
+  const MESSAGE_INTERVAL = 25; // 每 25ms 最多送一次
+  const messageQueue = [];
+  let queueWorkerRunning = false;
+
+  const sendTitleForRewrite = (title) => {
+    return new Promise((resolve, reject) => {
+      messageQueue.push({ title, resolve, reject });
+      runQueueWorker();
+    });
+  };
+
+  const runQueueWorker = async () => {
+    if (queueWorkerRunning) return;
+    queueWorkerRunning = true;
+    while (messageQueue.length) {
+      const { title, resolve, reject } = messageQueue.shift();
+      try {
+        const resp = await chrome.runtime.sendMessage({ title });
+        resolve(resp);
+      } catch (err) {
+        reject(err);
+      }
+      // 節流：固定間隔後再處理下一筆，避免短時間大量 Request。
+      await new Promise(r => setTimeout(r, MESSAGE_INTERVAL));
+    }
+    queueWorkerRunning = false;
+  };
+
   const processHeadline = async (headline) => {
     const originalTitle = headline.textContent.trim();
     if (isEmptyOrWhitespace(originalTitle)) {
@@ -62,7 +93,7 @@ function main() {
 
     try {
       // 把標題送給 background.js，並等待它回傳改寫後的結果。
-      const response = await chrome.runtime.sendMessage({ title: originalTitle });
+      const response = await sendTitleForRewrite(originalTitle);
       if (response && response.newTitle) {
         // 如果成功，就更新頁面上的標題文字。
         headline.textContent = response.newTitle;
@@ -172,7 +203,7 @@ function main() {
       link.dataset.originalTitle = originalTitle;
 
       // 發送 Request 改寫標題
-      chrome.runtime.sendMessage({ title: originalTitle })
+      sendTitleForRewrite(originalTitle)
         .then(response => {
           if (response && response.newTitle && link.parentNode) {
             link.textContent = response.newTitle;
@@ -222,7 +253,7 @@ function main() {
       link.dataset.originalTitle = originalTitle;
 
       // 發送 Request 改寫標題
-      chrome.runtime.sendMessage({ title: originalTitle })
+      sendTitleForRewrite(originalTitle)
         .then(response => {
           if (response && response.newTitle && link.parentNode) {
             link.textContent = response.newTitle;
