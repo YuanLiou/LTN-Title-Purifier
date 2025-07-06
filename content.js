@@ -39,10 +39,15 @@ chrome.runtime.sendMessage({ action: 'getApiStatus' }, (response) => {
  * 它會先找到新聞列表的「容器」，然後啟動一個「哨兵」去監控它。
  */
 function main() {
+  // 檢查標題是否為空或只包含空白字元（包括換行符號）
+  const isEmptyOrWhitespace = (str) => {
+    return !str || !str.trim() || /^\s*$/.test(str);
+  };
+
   const processHeadline = async (headline) => {
     const originalTitle = headline.textContent.trim();
-    if (!originalTitle) {
-      return; // 如果標題是空的，就跳過。
+    if (isEmptyOrWhitespace(originalTitle)) {
+      return; // 如果標題是空的或只包含空白字元，就跳過。
     }
 
     // 檢查這個標題是否已經被我們處理過了，避免重複發送請求。
@@ -160,7 +165,7 @@ function main() {
       if (link.dataset.ltnPurified) return;
       
       const originalTitle = link.textContent.trim();
-      if (!originalTitle) return;
+      if (isEmptyOrWhitespace(originalTitle)) return;
       
       // 標記為處理中
       link.dataset.ltnPurified = 'true';
@@ -210,7 +215,7 @@ function main() {
       if (link.dataset.ltnPurified) return;
       
       const originalTitle = link.textContent.trim();
-      if (!originalTitle) return;
+      if (isEmptyOrWhitespace(originalTitle)) return;
       
       // 標記為處理中
       link.dataset.ltnPurified = 'true';
