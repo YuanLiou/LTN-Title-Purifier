@@ -19,15 +19,15 @@ https://github.com/user-attachments/assets/fff6c675-dd90-4aec-a14e-d4b57005b440
 
 請開啟 Chrome (或是他的衍生產品）的擴充功能管理頁面，開啟「開發人員模式」
 
-<img width="50%" alt="Image" src="https://github.com/user-attachments/assets/e2759a8c-7fa8-447c-821f-ed2c485f9710" />
+<img width="60%" alt="Image" src="https://github.com/user-attachments/assets/e2759a8c-7fa8-447c-821f-ed2c485f9710" />
 
 載入未封裝項目
 
-<img width="50%" alt="Image" src="https://github.com/user-attachments/assets/2007aa46-d4da-4050-94ac-54c2ccff2a28" />
+<img width="60%" alt="Image" src="https://github.com/user-attachments/assets/2007aa46-d4da-4050-94ac-54c2ccff2a28" />
 
 把解壓縮後的專案資料夾引入就行了
 
-<img width="50%" height="1003" alt="Image" src="https://github.com/user-attachments/assets/cbf2a700-2692-43dd-a6c2-743988bd8061" />
+<img width="60%" height="1003" alt="Image" src="https://github.com/user-attachments/assets/cbf2a700-2692-43dd-a6c2-743988bd8061" />
 
 ## 怎麼設定本地的語言模型？
 
@@ -36,21 +36,21 @@ https://github.com/user-attachments/assets/fff6c675-dd90-4aec-a14e-d4b57005b440
 
 安裝好 LMStudio 後，請切換模式到 Power User
 
-<img width="50%" alt="Image" src="https://github.com/user-attachments/assets/7ff21c98-f6f6-4e9f-a504-c6b1f68c7c3e" />
+<img width="60%" alt="Image" src="https://github.com/user-attachments/assets/7ff21c98-f6f6-4e9f-a504-c6b1f68c7c3e" />
 
 按右邊的放大鏡，可以下載喜歡的模型。本例是用 gemma 3n e2b，是個小模型，
 
 所以你會注意到上面截圖有些標題他重寫後搞錯意思。越大的模型越聰明，但相對來說也更耗系統資源。
 
-<img width="50%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/20c4b59b-771d-4e00-97ac-08c7388f23bb" />
+<img width="60%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/20c4b59b-771d-4e00-97ac-08c7388f23bb" />
 
 按右邊第二個綠色圖示，接著按下中間那條 Bar 就可以載入模型。
 
-<img width="50%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/68591149-df14-4e57-ace2-af4f973348d2" />
+<img width="60%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/68591149-df14-4e57-ace2-af4f973348d2" />
 
 再啟動本地端 API 服務即可
 
-<img width="50%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/bd7d30af-fd44-4e01-b3a4-9335ed45c823" />
+<img width="60%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/bd7d30af-fd44-4e01-b3a4-9335ed45c823" />
 
 
 
