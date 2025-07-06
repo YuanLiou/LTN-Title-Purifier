@@ -198,8 +198,60 @@ function main() {
     }, 500);
   };
 
+  // 處理熱門新訊區塊
+  const processMarketNewsSection = () => {
+    const marketNewsContainer = document.querySelector('.market300.bg.boxTitle.boxText');
+    if (!marketNewsContainer) return false;
+
+    // 處理現有的熱門新訊標題
+    const marketNewsLinks = marketNewsContainer.querySelectorAll('a[data-desc^="T:"]');
+    marketNewsLinks.forEach(link => {
+      // 如果已經處理過，則跳過
+      if (link.dataset.ltnPurified) return;
+      
+      const originalTitle = link.textContent.trim();
+      if (!originalTitle) return;
+      
+      // 標記為處理中
+      link.dataset.ltnPurified = 'true';
+      link.dataset.originalTitle = originalTitle;
+
+      // 發送請求改寫標題
+      chrome.runtime.sendMessage({ title: originalTitle })
+        .then(response => {
+          if (response && response.newTitle && link.parentNode) {
+            link.textContent = response.newTitle;
+          }
+        })
+        .catch(error => {
+          if (!error.message.includes('Extension context invalidated')) {
+            console.error('[LTN Purify] 處理熱門新訊標題時出錯:', error);
+          }
+        });
+    });
+    
+    return true;
+  };
+
+  // 監控熱門新訊區塊
+  const monitorMarketNews = () => {
+    // 先立即處理一次
+    if (processMarketNewsSection()) {
+      return; // 如果找到並處理了熱門新訊區塊，就結束
+    }
+    
+    // 如果沒找到，設置一個間隔來檢查
+    const marketNewsInterval = setInterval(() => {
+      if (processMarketNewsSection()) {
+        clearInterval(marketNewsInterval);
+      }
+    }, 500);
+  };
+
   // 啟動熱門新聞監控
   monitorHotNews();
+  // 啟動熱門新訊監控
+  monitorMarketNews();
 
   // 因為新聞列表可能是由 JavaScript 動態載入的，所以我們不能假設它一開始就存在。
   // 這裡我們使用一個計時器，每半秒檢查一次，直到找到新聞列表的容器為止。
