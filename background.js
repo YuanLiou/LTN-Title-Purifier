@@ -17,7 +17,24 @@ const API_STATUS_TIMEOUT = 5000;
 // API 標題改寫請求的超時時間 (單位：毫秒)。沒回應就算失敗，因為 LLM 可能需要多一點時間思考。
 const API_REWRITE_TIMEOUT = 15000;
 // 後端 API 的網址。
-const API_ENDPOINT = 'http://localhost:1234/v1/chat/completions';
+// 使用者可自訂的 API port（預設 1234）
+let apiPort = 1234;
+// 依據目前的 port 動態組合 API Endpoint
+let API_ENDPOINT = `http://localhost:${apiPort}/v1/chat/completions`;
+
+// 讀取使用者設定的 port（如果有的話）
+chrome.storage.local.get({ apiPort: 1234 }, (result) => {
+  apiPort = result.apiPort;
+  API_ENDPOINT = `http://localhost:${apiPort}/v1/chat/completions`;
+});
+
+// 監聽 port 變更（來自 options 頁面）
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.apiPort) {
+    apiPort = changes.apiPort.newValue;
+    API_ENDPOINT = `http://localhost:${apiPort}/v1/chat/completions`;
+  }
+});
 // 我們給予 LLM 的「系統指令」，告訴它要扮演什麼角色，以及該如何行動。
 const SYSTEM_PROMPT = '你是一個協助改寫新聞標題的助理。你的目標是將聳動的標題改寫成平鋪直敘的風格。請只回傳改寫後的標題，不要包含任何其他文字或解釋。';
 

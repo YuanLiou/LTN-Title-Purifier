@@ -7,7 +7,7 @@
     "storage"
   ],
   "host_permissions": [
-    "http://localhost:1234/",
+    "http://localhost/*",
     "https://news.ltn.com.tw/"
   ],
   "background": {
@@ -19,6 +19,7 @@
       "js": ["content.js"]
     }
   ],
+  "options_page": "options.html",
   "action": {
     "default_popup": "popup.html"
   }
