@@ -1,7 +1,7 @@
 /**
  * @file background.js
  * @description
- *  這是 Chrome 擴充套件的背景腳本，你可以把它想像成是擴充套件的大腦和指揮中心。
+ *  這是 Chrome 擴充套件的背景 Script
  *  它在背景持續運行，主要負責兩件大事：
  *  1. 與後端語言模型（LLM）API 溝通，發送請求並接收改寫後的標題。
  *  2. 管理整個擴充套件的狀態，例如「API 目前是否可用」。
@@ -11,11 +11,10 @@
 // =============================================
 // 常數設定 (Configuration)
 // =============================================
-// 把這些設定放在最上面，就像是說明書的規格表，方便未來快速修改，而不用在程式碼裡到處找。
 
-// API 狀態檢查的超時時間 (單位：毫秒)。5秒沒回應就算失敗。
+// API 狀態檢查的超時時間 (單位：毫秒)。沒回應就算失敗。
 const API_STATUS_TIMEOUT = 5000;
-// API 標題改寫請求的超時時間 (單位：毫秒)。15秒沒回應就算失敗，因為 LLM 可能需要多一點時間思考。
+// API 標題改寫請求的超時時間 (單位：毫秒)。沒回應就算失敗，因為 LLM 可能需要多一點時間思考。
 const API_REWRITE_TIMEOUT = 15000;
 // 後端 API 的網址。
 const API_ENDPOINT = 'http://localhost:1234/v1/chat/completions';
@@ -28,7 +27,6 @@ const SYSTEM_PROMPT = '你是一個協助改寫新聞標題的助理。你的目
 
 /**
  * 一個帶有超時功能的 fetch 請求。
- * 把它想像成一個「設定了鬧鐘的快遞員」。我們派他去送包裹（發送 API 請求），
  * 如果在指定時間內沒有回來（timeout），我們就直接不等了，當作任務失敗（abort）。
  * @param {string} url - 要請求的網址。
  * @param {object} options - fetch 的設定，跟原本的 fetch 一樣。
@@ -86,7 +84,7 @@ chrome.runtime.onInstalled.addListener(() => checkApiStatus());
 chrome.runtime.onStartup.addListener(() => checkApiStatus());
 
 /**
- * 這是整個背景腳本最重要的部分：訊息總機。
+ * 這是整個背景 Script 最重要的部分：訊息總機。
  * 它會監聽來自擴充套件其他地方（content.js, popup.js）的訊息。
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

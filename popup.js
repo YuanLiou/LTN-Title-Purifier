@@ -2,7 +2,7 @@
 /**
  * @file popup.js
  * @description
- *  這個腳本控制著當你點擊瀏覽器右上角的擴充套件圖示時，所出現的那個小視窗（popup）的行為。
+ *  這個 Script 控制著當你點擊瀏覽器右上角的擴充套件圖示時，所出現的那個小視窗（popup）的行為。
  *  它的功能非常單純，就像一個儀表板，只做一件事：
  *  顯示後端 API 目前的連線狀態是「已連接」還是「無法使用」。
  */
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 一開始，先顯示一個「正在檢查...」的訊息，讓使用者知道程式正在運作。
   statusElement.textContent = '正在檢查後端 API 狀態...';
 
-  // 向背景腳本（background.js）發送一個訊息，詢問「API 現在的狀態是什麼？」
+  // 向背景 Script （background.js）發送一個訊息，詢問「API 現在的狀態是什麼？」
   chrome.runtime.sendMessage({ action: 'getApiStatus' }, (response) => {
     // 這是在收到 background.js 回應後要執行的程式碼。
 

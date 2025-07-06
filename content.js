@@ -2,10 +2,10 @@
 /**
  * @file content.js
  * @description
- *  這個腳本是擴充套件的「前線作戰部隊」，它會被直接注入到我們指定的網頁（例如自由時報）中運作。
+ *  這個 Script 是擴充套件的「前線作戰部隊」，它會被直接注入到我們指定的網頁中運作。
  *  它的任務很單純：
  *  1. 找出頁面上的所有新聞標題。
- *  2. 把標題一個一個地送給背景腳本（background.js）去改寫。
+ *  2. 把標題一個一個地送給背景 Script （background.js）去改寫。
  *  3. 收到改寫後的新標題後，更新頁面上的文字。
  *  為了應對現代網頁「無限滾動」的特性，它還會像個哨兵一樣，持續監控頁面，只要有新標題出現就立刻處理。
  */
@@ -14,13 +14,13 @@
 // 執行流程 (Execution Flow)
 // =============================================
 
-// 腳本一開始，不是馬上動手，而是先「請示總部」。
-// 它會向 background.js 發送一個訊息，詢問「老闆，API 現在能用嗎？」
-console.log('[LTN Purify] 內容腳本已載入，正在檢查 API 狀態...');
+// Script 一開始，不是馬上動手，而是先「請示總部」。
+// 它會向 background.js 發送一個訊息，詢問「API 現在能用嗎？」
+console.log('[LTN Purify] 內容 Script 已載入，正在檢查 API 狀態...');
 chrome.runtime.sendMessage({ action: 'getApiStatus' }, (response) => {
   if (chrome.runtime.lastError) {
-    // 如果連 background.js 都聯繫不上，就在 console 留下紀錄，然後停止一切動作。
-    console.error('[LTN Purify] 無法聯繫到背景腳本:', chrome.runtime.lastError.message);
+    // 如果連 background.js 都連不上，就在 console 留下紀錄，然後停止一切動作。
+    console.error('[LTN Purify] 無法連線到背景 Script:', chrome.runtime.lastError.message);
     return;
   }
 
@@ -30,7 +30,7 @@ chrome.runtime.sendMessage({ action: 'getApiStatus' }, (response) => {
     main();
   } else {
     // 如果總部回覆「API現在不行」，我們就在 console 留個紀錄，然後收工。
-    console.log('[LTN Purify] API 目前不可用，腳本停止執行。');
+    console.log('[LTN Purify] API 目前不可用，Script 停止執行。');
   }
 });
 
@@ -67,7 +67,7 @@ function main() {
       if (error.message.includes('Extension context invalidated')) {
           // 這是一個正常情況，通常發生在擴充套件被更新或停用時，不需要特別處理。
       } else {
-          console.error('[LTN Purify] 與背景腳本溝通時發生錯誤:', error);
+          console.error('[LTN Purify] 與背景 Script 溝通時發生錯誤:', error);
       }
     }
   };
@@ -142,7 +142,7 @@ function main() {
         // 初始處理一次
         processMarqueeAnchors(marqueeNode);
 
-        // 監控後續可能的節點變化（雖然官方說不會 lazy load，但保險起見）
+        // 監控後續可能的節點變化（雖然說不會 lazy load，但保險起見）
         const observer = new MutationObserver((mutations) => {
           mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
