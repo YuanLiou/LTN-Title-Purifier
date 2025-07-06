@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LTN 標題淨化器",
+  "name": "LTN 新聞標題重寫器",
   "version": "1.0",
-  "description": "使用本地 LLM 淨化自由時報新聞標題",
+  "description": "使用本地 LLM 重寫自由時報新聞標題",
   "permissions": [
     "storage"
   ],
