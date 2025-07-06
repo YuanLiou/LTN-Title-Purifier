@@ -44,16 +44,22 @@ function main() {
     return !str || !str.trim() || /^\s*$/.test(str);
   };
 
-  // -----------------------------
-  // 方案 1+2：標題排程與節流 (Queue + Interval)
-  // -----------------------------
   const MESSAGE_INTERVAL = 25; // 每 25ms 最多送一次
+
+  // 標題處理優先權設定（數字越大越優先）
+  const PRIORITY = {
+    MAIN_LIST: 5,   // 一般新聞列表的標題
+    HOT_NEWS: 4,    // 熱門新聞
+    MARKET_NEWS: 3, // 熱門新訊
+    CAROUSEL: 2,    // 大圖輪播區
+    MARQUEE: 1      // 快訊
+  };
   const messageQueue = [];
   let queueWorkerRunning = false;
 
-  const sendTitleForRewrite = (title) => {
+  const sendTitleForRewrite = (title, priority = 0) => {
     return new Promise((resolve, reject) => {
-      messageQueue.push({ title, resolve, reject });
+      messageQueue.push({ title, priority, resolve, reject });
       runQueueWorker();
     });
   };
@@ -62,6 +68,8 @@ function main() {
     if (queueWorkerRunning) return;
     queueWorkerRunning = true;
     while (messageQueue.length) {
+      // 每次處理前依權重重新排序，確保高優先權先送出
+      messageQueue.sort((a, b) => b.priority - a.priority);
       const { title, resolve, reject } = messageQueue.shift();
       try {
         const resp = await chrome.runtime.sendMessage({ title });
@@ -69,13 +77,13 @@ function main() {
       } catch (err) {
         reject(err);
       }
-      // 節流：固定間隔後再處理下一筆，避免短時間大量 Request。
+      // 固定間隔後再處理下一筆，避免短時間大量 Request。
       await new Promise(r => setTimeout(r, MESSAGE_INTERVAL));
     }
     queueWorkerRunning = false;
   };
 
-  const processHeadline = async (headline) => {
+  const processHeadline = async (headline, priority = PRIORITY.MAIN_LIST) => {
     const originalTitle = headline.textContent.trim();
     if (isEmptyOrWhitespace(originalTitle)) {
       return; // 如果標題是空的或只包含空白字元，就跳過。
@@ -93,7 +101,7 @@ function main() {
 
     try {
       // 把標題送給 background.js，並等待它回傳改寫後的結果。
-      const response = await sendTitleForRewrite(originalTitle);
+      const response = await sendTitleForRewrite(originalTitle, priority);
       if (response && response.newTitle) {
         // 如果成功，就更新頁面上的標題文字。
         headline.textContent = response.newTitle;
@@ -114,17 +122,17 @@ function main() {
       const carouselArticle = document.querySelector('article.boxTitle[data-desc="輪播區"]');
       if (carouselArticle) {
         const carouselH3s = carouselArticle.querySelectorAll('h3:not([data-ltn-purified])');
-        carouselH3s.forEach(processHeadline);
+        carouselH3s.forEach(h => processHeadline(h, PRIORITY.CAROUSEL));
       }
       
       // 處理一般新聞列表的標題
       const headlines = targetNode.querySelectorAll('li[data-page] h3:not([data-ltn-purified])');
-      headlines.forEach(processHeadline);
+      headlines.forEach(h => processHeadline(h, PRIORITY.MAIN_LIST));
       
       // 如果上面的選擇器找不到（可能網頁改版了），就用一個比較寬鬆的選擇器再試一次。
       if (headlines.length === 0) {
         const allH3s = targetNode.querySelectorAll('h3:not([data-ltn-purified])');
-        allH3s.forEach(processHeadline);
+        allH3s.forEach(h => processHeadline(h, PRIORITY.MAIN_LIST));
       }
     };
 
@@ -166,7 +174,7 @@ function main() {
     // 專門處理 marquee 內的 a 標籤
     const processMarqueeAnchors = (root) => {
       const anchors = root.querySelectorAll('li a:not([data-ltn-purified])');
-      anchors.forEach(processHeadline);
+      anchors.forEach(a => processHeadline(a, PRIORITY.MARQUEE));
     };
 
     // marquee 是透過 AJAX 動態插入的，先用 polling 等待它出現
@@ -203,7 +211,7 @@ function main() {
       link.dataset.originalTitle = originalTitle;
 
       // 發送 Request 改寫標題
-      sendTitleForRewrite(originalTitle)
+      sendTitleForRewrite(originalTitle, PRIORITY.HOT_NEWS)
         .then(response => {
           if (response && response.newTitle && link.parentNode) {
             link.textContent = response.newTitle;
@@ -253,7 +261,7 @@ function main() {
       link.dataset.originalTitle = originalTitle;
 
       // 發送 Request 改寫標題
-      sendTitleForRewrite(originalTitle)
+      sendTitleForRewrite(originalTitle, PRIORITY.MARKET_NEWS)
         .then(response => {
           if (response && response.newTitle && link.parentNode) {
             link.textContent = response.newTitle;
