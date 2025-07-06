@@ -4,7 +4,7 @@
  * @description
  *  這個 Script 是擴充套件的「前線作戰部隊」，它會被直接注入到我們指定的網頁中運作。
  *  它的任務很單純：
- *  1. 找出頁面上的所有新聞標題。
+ *  1. 找出頁面上的所有新聞標題（包含熱門新聞區塊）。
  *  2. 把標題一個一個地送給背景 Script （background.js）去改寫。
  *  3. 收到改寫後的新標題後，更新頁面上的文字。
  *  為了應對現代網頁「無限滾動」的特性，它還會像個哨兵一樣，持續監控頁面，只要有新標題出現就立刻處理。
@@ -147,6 +147,59 @@ function main() {
 
   // 立即啟動 marquee 監控
   monitorMarquee();
+
+  // 處理熱門新聞區塊
+  const processHotNewsSection = () => {
+    const hotNewsContainer = document.querySelector('.hotnews.bg.boxTitle.boxText');
+    if (!hotNewsContainer) return false;
+
+    // 處理現有的熱門新聞標題
+    const hotNewsLinks = hotNewsContainer.querySelectorAll('a[data-desc^="T:"]');
+    hotNewsLinks.forEach(link => {
+      // 如果已經處理過，則跳過
+      if (link.dataset.ltnPurified) return;
+      
+      const originalTitle = link.textContent.trim();
+      if (!originalTitle) return;
+      
+      // 標記為處理中
+      link.dataset.ltnPurified = 'true';
+      link.dataset.originalTitle = originalTitle;
+
+      // 發送請求改寫標題
+      chrome.runtime.sendMessage({ title: originalTitle })
+        .then(response => {
+          if (response && response.newTitle && link.parentNode) {
+            link.textContent = response.newTitle;
+          }
+        })
+        .catch(error => {
+          if (!error.message.includes('Extension context invalidated')) {
+            console.error('[LTN Purify] 處理熱門新聞標題時出錯:', error);
+          }
+        });
+    });
+    
+    return true;
+  };
+
+  // 監控熱門新聞區塊
+  const monitorHotNews = () => {
+    // 先立即處理一次
+    if (processHotNewsSection()) {
+      return; // 如果找到並處理了熱門新聞區塊，就結束
+    }
+    
+    // 如果沒找到，設置一個間隔來檢查
+    const hotNewsInterval = setInterval(() => {
+      if (processHotNewsSection()) {
+        clearInterval(hotNewsInterval);
+      }
+    }, 500);
+  };
+
+  // 啟動熱門新聞監控
+  monitorHotNews();
 
   // 因為新聞列表可能是由 JavaScript 動態載入的，所以我們不能假設它一開始就存在。
   // 這裡我們使用一個計時器，每半秒檢查一次，直到找到新聞列表的容器為止。
