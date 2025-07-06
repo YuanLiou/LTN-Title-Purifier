@@ -56,6 +56,23 @@ https://github.com/user-attachments/assets/fff6c675-dd90-4aec-a14e-d4b57005b440
 
 <img width="60%" height="1664" alt="Image" src="https://github.com/user-attachments/assets/bd7d30af-fd44-4e01-b3a4-9335ed45c823" />
 
+### 怎麼調整本地端的 Port
+
+直接到擴充套件的選項
+
+<img width="414" alt="extensions" src="https://github.com/user-attachments/assets/377740a6-9726-4264-b397-036ffbb9527e" />
+
+就可以調整 Port
+
+<img width="395" alt="extensions_002" src="https://github.com/user-attachments/assets/40959163-fc65-47fb-8d0f-1804b0b049a1" />
+
+
+
+
+
+
+
+
 
 
 
