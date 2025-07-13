@@ -4,10 +4,10 @@
   "version": "1.0",
   "description": "使用本地 LLM 重寫自由時報新聞標題",
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
-    "http://localhost/*",
     "https://news.ltn.com.tw/",
     "https://today.line.me/"
   ],
@@ -16,12 +16,33 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://news.ltn.com.tw/list/breakingnews*", "https://today.line.me/tw/v3/tab*"],
-      "js": ["content.js"]
+      "matches": ["https://news.ltn.com.tw/list/breakingnews*"],
+      "js": ["sites/common.js", "sites/ltn.js"]
+    },
+    {
+      
+      "matches": ["https://today.line.me/tw/v3/tab*"],
+      "js": ["sites/common.js", "sites/line_today.js"]
     }
   ],
-  "options_page": "options.html",
   "action": {
-    "default_popup": "popup.html"
-  }
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["images/icon16.png", "images/icon48.png", "images/icon128.png"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
