@@ -1,10 +1,9 @@
-
 /**
  * @file content.js
  * @description
  *  這個 Script 是擴充套件的「前線作戰部隊」，它會被直接注入到我們指定的網頁中運作。
  *  它的任務很單純：
- *  1. 找出頁面上的所有新聞標題（包含熱門新聞區塊）。
+ *  1. 找出頁面上的所有新聞標題。
  *  2. 把標題一個一個地送給背景 Script （background.js）去改寫。
  *  3. 收到改寫後的新標題後，更新頁面上的文字。
  *  為了應對現代網頁「無限滾動」的特性，它還會像個哨兵一樣，持續監控頁面，只要有新標題出現就立刻處理。
@@ -34,88 +33,162 @@ chrome.runtime.sendMessage({ action: 'getApiStatus' }, (response) => {
   }
 });
 
+// =============================================
+// 全站共用函式與變數 (Shared Functions & Variables)
+// =============================================
+
+// 檢查標題是否為空或只包含空白字元（包括換行符號）
+const isEmptyOrWhitespace = (str) => {
+  return !str || !str.trim() || /^\s*$/.test(str);
+};
+
+const MESSAGE_INTERVAL = 25; // 每 25ms 最多送一次
+
+// 標題處理優先權設定（數字越大越優先）
+const PRIORITY = {
+  // LTN
+  MAIN_LIST: 5,   // 一般新聞列表的標題
+  HOT_NEWS: 4,    // 熱門新聞
+  MARKET_NEWS: 3, // 熱門新訊
+  CAROUSEL: 2,    // 大圖輪播區
+  MARQUEE: 1,     // 快訊
+  // LINE Today
+  LINE_HEADLINE: 5 // LINE Today 的標題
+};
+const messageQueue = [];
+let queueWorkerRunning = false;
+
+const sendTitleForRewrite = (title, priority = 0) => {
+  return new Promise((resolve, reject) => {
+    messageQueue.push({ title, priority, resolve, reject });
+    runQueueWorker();
+  });
+};
+
+const runQueueWorker = async () => {
+  if (queueWorkerRunning) return;
+  queueWorkerRunning = true;
+  while (messageQueue.length) {
+    // 每次處理前依權重重新排序，確保高優先權先送出
+    messageQueue.sort((a, b) => b.priority - a.priority);
+    const { title, resolve, reject } = messageQueue.shift();
+    try {
+      const resp = await chrome.runtime.sendMessage({ title });
+      resolve(resp);
+    } catch (err) {
+      reject(err);
+    }
+    // 固定間隔後再處理下一筆，避免短時間大量 Request。
+    await new Promise(r => setTimeout(r, MESSAGE_INTERVAL));
+  }
+  queueWorkerRunning = false;
+};
+
+const processHeadline = async (headline, priority) => {
+  const originalTitle = headline.textContent.trim();
+  if (isEmptyOrWhitespace(originalTitle)) {
+    return; // 如果標題是空的或只包含空白字元，就跳過。
+  }
+
+  // 檢查這個標題是否已經被我們處理過了，避免重複發送 Request 
+  if (headline.dataset.ltnPurified && headline.dataset.originalTitle === originalTitle) {
+    return;
+  }
+  
+  // 立刻蓋上「處理中」的章，並記錄下原始標題。
+  headline.dataset.ltnPurified = 'true';
+  headline.dataset.originalTitle = originalTitle;
+
+  try {
+    // 把標題送給 background.js，並等待它回傳改寫後的結果。
+    const response = await sendTitleForRewrite(originalTitle, priority);
+    if (response && response.newTitle) {
+      // 如果成功，就更新頁面上的標題文字。
+      headline.textContent = response.newTitle;
+    }
+  } catch (error) {
+    // 如果在與 background.js 溝通時發生錯誤...
+    if (error.message.includes('Extension context invalidated')) {
+        // 這是一個正常情況，通常發生在擴充套件被更新或停用時，不需要特別處理。
+    } else {
+        console.error('[LTN Purify] 與背景 Script 溝通時發生錯誤:', error);
+    }
+  }
+};
+
+
 /**
  * 擴充套件的主要工作函式。
- * 它會先找到新聞列表的「容器」，然後啟動一個「哨兵」去監控它。
+ * 它會根據當前網域名稱，決定要執行哪個網站的處理邏輯。
  */
 function main() {
-  // 檢查標題是否為空或只包含空白字元（包括換行符號）
-  const isEmptyOrWhitespace = (str) => {
-    return !str || !str.trim() || /^\s*$/.test(str);
-  };
+  const hostname = window.location.hostname;
 
-  const MESSAGE_INTERVAL = 25; // 每 25ms 最多送一次
+  if (hostname.includes('news.ltn.com.tw')) {
+    console.log('[LTN Purify] 偵測到自由時報，啟動 LTN 處理模組。');
+    handleLtnNews();
+  } else if (hostname.includes('today.line.me')) {
+    console.log('[LTN Purify] 偵測到 LINE Today，啟動 LINE Today 處理模組。');
+    handleLineToday();
+  } else {
+    console.log(`[LTN Purify] 在不支援的網站 (${hostname}) 上執行，停止。`);
+  }
+}
 
-  // 標題處理優先權設定（數字越大越優先）
-  const PRIORITY = {
-    MAIN_LIST: 5,   // 一般新聞列表的標題
-    HOT_NEWS: 4,    // 熱門新聞
-    MARKET_NEWS: 3, // 熱門新訊
-    CAROUSEL: 2,    // 大圖輪播區
-    MARQUEE: 1      // 快訊
-  };
-  const messageQueue = [];
-  let queueWorkerRunning = false;
+// =============================================
+// LINE Today 處理模組
+// =============================================
+function handleLineToday() {
+  // 這些是根據猜測的 LINE Today 頁面結構所寫的選擇器，可能需要調整。
+  const headlineSelectors = [
+    'a h2.article-title',
+    'a .article-title',
+    '.topic-title a',
+    '.headline-title',
+    'a[data-testid="article-item-title"]', // 根據常見的 data-* attribute 格式猜測
+    '.articleBigCard-info h3.header', // 主頁卡片標題 (h3)
+  ];
 
-  const sendTitleForRewrite = (title, priority = 0) => {
-    return new Promise((resolve, reject) => {
-      messageQueue.push({ title, priority, resolve, reject });
-      runQueueWorker();
+  const processAllLineHeadlines = (targetNode) => {
+    headlineSelectors.forEach(selector => {
+      // 我們只處理還沒被標記過的標題
+      const headlines = targetNode.querySelectorAll(`${selector}:not([data-ltn-purified])`);
+      headlines.forEach(h => processHeadline(h, PRIORITY.LINE_HEADLINE));
     });
   };
 
-  const runQueueWorker = async () => {
-    if (queueWorkerRunning) return;
-    queueWorkerRunning = true;
-    while (messageQueue.length) {
-      // 每次處理前依權重重新排序，確保高優先權先送出
-      messageQueue.sort((a, b) => b.priority - a.priority);
-      const { title, resolve, reject } = messageQueue.shift();
-      try {
-        const resp = await chrome.runtime.sendMessage({ title });
-        resolve(resp);
-      } catch (err) {
-        reject(err);
+  // 使用 MutationObserver 來監控整個頁面的變化，因為 LINE Today 可能是動態載入內容的。
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        mutation.addedNodes.forEach(node => {
+          // 只處理元素節點
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // 檢查新增的節點本身或其子節點是否包含標題
+            processAllLineHeadlines(node);
+          }
+        });
       }
-      // 固定間隔後再處理下一筆，避免短時間大量 Request。
-      await new Promise(r => setTimeout(r, MESSAGE_INTERVAL));
-    }
-    queueWorkerRunning = false;
-  };
+    });
+  });
 
-  const processHeadline = async (headline, priority = PRIORITY.MAIN_LIST) => {
-    const originalTitle = headline.textContent.trim();
-    if (isEmptyOrWhitespace(originalTitle)) {
-      return; // 如果標題是空的或只包含空白字元，就跳過。
-    }
+  // 頁面一載入，就先處理一次現有的標題。
+  console.log('[LTN Purify] LINE Today 模組：首次掃描頁面標題...');
+  processAllLineHeadlines(document.body);
 
-    // 檢查這個標題是否已經被我們處理過了，避免重複發送 Request 
-    // 就像在處理過的項目上蓋一個「已處理」的章。
-    if (headline.dataset.ltnPurified && headline.dataset.originalTitle === originalTitle) {
-      return;
-    }
-    
-    // 立刻蓋上「處理中」的章，並記錄下原始標題。
-    headline.dataset.ltnPurified = 'true';
-    headline.dataset.originalTitle = originalTitle;
+  // 開始監控頁面變化
+  console.log('[LTN Purify] LINE Today 模組：啟動 MutationObserver 監控頁面變化。');
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
 
-    try {
-      // 把標題送給 background.js，並等待它回傳改寫後的結果。
-      const response = await sendTitleForRewrite(originalTitle, priority);
-      if (response && response.newTitle) {
-        // 如果成功，就更新頁面上的標題文字。
-        headline.textContent = response.newTitle;
-      }
-    } catch (error) {
-      // 如果在與 background.js 溝通時發生錯誤...
-      if (error.message.includes('Extension context invalidated')) {
-          // 這是一個正常情況，通常發生在擴充套件被更新或停用時，不需要特別處理。
-      } else {
-          console.error('[LTN Purify] 與背景 Script 溝通時發生錯誤:', error);
-      }
-    }
-  };
 
+// =============================================
+// 自由時報 (LTN) 處理模組
+// =============================================
+function handleLtnNews() {
   const startObserver = (targetNode) => {
     const processAllHeadlines = () => {
       // 處理大圖輪播區的標題
@@ -200,28 +273,7 @@ function main() {
     // 處理現有的熱門新聞標題
     const hotNewsLinks = hotNewsContainer.querySelectorAll('a[data-desc^="T:"]');
     hotNewsLinks.forEach(link => {
-      // 如果已經處理過，則跳過
-      if (link.dataset.ltnPurified) return;
-      
-      const originalTitle = link.textContent.trim();
-      if (isEmptyOrWhitespace(originalTitle)) return;
-      
-      // 標記為處理中
-      link.dataset.ltnPurified = 'true';
-      link.dataset.originalTitle = originalTitle;
-
-      // 發送 Request 改寫標題
-      sendTitleForRewrite(originalTitle, PRIORITY.HOT_NEWS)
-        .then(response => {
-          if (response && response.newTitle && link.parentNode) {
-            link.textContent = response.newTitle;
-          }
-        })
-        .catch(error => {
-          if (!error.message.includes('Extension context invalidated')) {
-            console.error('[LTN Purify] 處理熱門新聞標題時出錯:', error);
-          }
-        });
+      processHeadline(link, PRIORITY.HOT_NEWS);
     });
     
     return true;
@@ -250,28 +302,7 @@ function main() {
     // 處理現有的熱門新訊標題
     const marketNewsLinks = marketNewsContainer.querySelectorAll('a[data-desc^="T:"]');
     marketNewsLinks.forEach(link => {
-      // 如果已經處理過，則跳過
-      if (link.dataset.ltnPurified) return;
-      
-      const originalTitle = link.textContent.trim();
-      if (isEmptyOrWhitespace(originalTitle)) return;
-      
-      // 標記為處理中
-      link.dataset.ltnPurified = 'true';
-      link.dataset.originalTitle = originalTitle;
-
-      // 發送 Request 改寫標題
-      sendTitleForRewrite(originalTitle, PRIORITY.MARKET_NEWS)
-        .then(response => {
-          if (response && response.newTitle && link.parentNode) {
-            link.textContent = response.newTitle;
-          }
-        })
-        .catch(error => {
-          if (!error.message.includes('Extension context invalidated')) {
-            console.error('[LTN Purify] 處理熱門新訊標題時出錯:', error);
-          }
-        });
+      processHeadline(link, PRIORITY.MARKET_NEWS);
     });
     
     return true;

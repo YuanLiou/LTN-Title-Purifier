@@ -8,14 +8,15 @@
   ],
   "host_permissions": [
     "http://localhost/*",
-    "https://news.ltn.com.tw/"
+    "https://news.ltn.com.tw/",
+    "https://today.line.me/"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://news.ltn.com.tw/list/breakingnews*"],
+      "matches": ["https://news.ltn.com.tw/list/breakingnews*", "https://today.line.me/tw/v3/tab*"],
       "js": ["content.js"]
     }
   ],
